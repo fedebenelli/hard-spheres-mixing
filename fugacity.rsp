@@ -1,0 +1,4 @@
+option run
+option --compiler ifort
+option --profile release
+option --runner time

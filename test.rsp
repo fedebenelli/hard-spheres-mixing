@@ -1,0 +1,4 @@
+option test
+option --compiler ifort
+option --profile release
+option --runner time
