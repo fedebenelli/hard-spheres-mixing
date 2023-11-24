@@ -3,7 +3,7 @@ module hard_spheres_mix
    use hyperdual_mod
    implicit none
 
-   real(pr), parameter :: R = 0.08314472
+   real(pr), parameter :: R = 82.05 !0.08314472
 
    type(hyperdual) :: amix, bmix, lambda(0:3)
    real(pr), allocatable :: ac(:), b(:), k(:), Tc(:), kij(:, :)
@@ -196,22 +196,26 @@ module hard_spheres_mix
       !  volume.
       !
       real(pr)                :: b
-      b = bMix%f0/1000
+      b = bMix%f0
       return
    end subroutine get_covolume
 
-   subroutine read_eos_parameters(inputFile, outputFile, NC)
+   subroutine read_hs_mix_parameters(inputFile, outputFile, NC)
       implicit none
-      integer, parameter          :: NCM = 15
+      integer, parameter          :: NCM = 30
       integer                     :: compound, inputFile, NC, outputFile
       real(pr)                    :: aux
-      real(pr), dimension(NC)     :: omega, Pc
-      real(8),  dimension(2)      :: Bgpec, TCgpec, PCgpec, DCgpec
+      real(pr), dimension(NC)     :: omega, Pc, Tc
+      real(8),  dimension(NCM)      :: Bgpec, TCgpec, PCgpec, DCgpec
+      
+      character(10), dimension(NCM) :: compName
 
       COMMON/CRIT/TCgpec, PCgpec, DCgpec
       COMMON/COVOL/Bgpec
+      common /ANAME/ compName
 
       do compound = 1, NC
+         read (inputFile, *) compName(compound)
          read (inputFile, *) Tc(compound), Pc(compound), omega(compound)
          aux = (2**(1._pr/3) - 1._pr)/3
          ac(compound) = (R*Tc(compound))**2/Pc(compound)/aux/27
@@ -232,50 +236,50 @@ module hard_spheres_mix
       end do
    end subroutine
 
-   subroutine fugacity(NC, phase_type, n_deriv, t_deriv, p_deriv, T, P, n, v, lnPhi, dlnPhi_dn, dlnPhi_dT, dlnPhi_dP)
-      implicit none
-      integer :: i, j, n_deriv, NC, phase_type, p_deriv, t_deriv
-      real(pr), intent(in) :: t, p, n(:)
-
-      real(pr)                      :: dP_dT, dP_dV, n_tot, RT, V, Z
-      real(pr), dimension(size(n))       :: dlnPhi_dP, dlnPhi_dT, dP_dn, lnPhi
-      real(pr), dimension(size(n), size(n))   :: dlnPhi_dn
-
-      type(prop(nc)) :: residual_helmholtz
-
-      ! Function from which all thermodynamic properties are calculated.
-      call volume_calculation(V)
-      n_tot = sum(n(:NC))
-      Z = P*V/n_tot/R/T
-
-      residual_helmholtz = ar_derivatives(t, v, n, .true.)
-
-      ! fugacity
-      lnPhi = residual_helmholtz%dn - log(Z)
-
-      ! Fugacity derivatives
-      RT = R*T
-      dP_dn =  RT*(1._pr/V - residual_helmholtz%dnv)
-      dP_dV = -RT*(n_tot/V/V + residual_helmholtz%dv2)
-      dP_dT = P/T - RT*residual_helmholtz%dtv
-      
-      dlnPhi_dT = residual_helmholtz%dnt + 1._pr/T + dP_dT*dP_dn/dP_dV/RT
-      dlnPhi_dP = -dP_dn/RT/dP_dV - 1._pr/P
-      do i = 1, NC
-         do j = i, NC
-            dlnPhi_dn(j, i) = residual_helmholtz%dn2(j, i) &
-                              + 1._pr/n_tot + dP_dn(j)*dP_dn(i)/RT/dP_dV
-            dlnPhi_dn(i, j) = dlnPhi_dn(j, i)
-         end do
-      end do
-   end subroutine fugacity
-
-   subroutine volume_calculation(v)
-      implicit none
-      real(pr) :: V
-      ! v = 0.0097248811017998961_pr*82.05_pr*334.57975847415042_pr
-      V=0.11655858674454586088325610656019
-   end subroutine volume_calculation
+!    subroutine fugacity(NC, phase_type, n_deriv, t_deriv, p_deriv, T, P, n, v, lnPhi, dlnPhi_dn, dlnPhi_dT, dlnPhi_dP)
+!       implicit none
+!       integer :: i, j, n_deriv, NC, phase_type, p_deriv, t_deriv
+!       real(pr), intent(in) :: t, p, n(:)
+! 
+!       real(pr)                      :: dP_dT, dP_dV, n_tot, RT, V, Z
+!       real(pr), dimension(size(n))       :: dlnPhi_dP, dlnPhi_dT, dP_dn, lnPhi
+!       real(pr), dimension(size(n), size(n))   :: dlnPhi_dn
+! 
+!       type(prop(nc)) :: residual_helmholtz
+! 
+!       ! Function from which all thermodynamic properties are calculated.
+!       call volume_calculation(V)
+!       n_tot = sum(n(:NC))
+!       Z = P*V/n_tot/R/T
+! 
+!       residual_helmholtz = ar_derivatives(t, v, n, .true.)
+! 
+!       ! fugacity
+!       lnPhi = residual_helmholtz%dn - log(Z)
+! 
+!       ! Fugacity derivatives
+!       RT = R*T
+!       dP_dn =  RT*(1._pr/V - residual_helmholtz%dnv)
+!       dP_dV = -RT*(n_tot/V/V + residual_helmholtz%dv2)
+!       dP_dT = P/T - RT*residual_helmholtz%dtv
+!       
+!       dlnPhi_dT = residual_helmholtz%dnt + 1._pr/T + dP_dT*dP_dn/dP_dV/RT
+!       dlnPhi_dP = -dP_dn/RT/dP_dV - 1._pr/P
+!       do i = 1, NC
+!          do j = i, NC
+!             dlnPhi_dn(j, i) = residual_helmholtz%dn2(j, i) &
+!                               + 1._pr/n_tot + dP_dn(j)*dP_dn(i)/RT/dP_dV
+!             dlnPhi_dn(i, j) = dlnPhi_dn(j, i)
+!          end do
+!       end do
+!    end subroutine fugacity
+! 
+!    subroutine volume_calculation(v)
+!       implicit none
+!       real(pr) :: V
+!       ! v = 0.0097248811017998961_pr*82.05_pr*334.57975847415042_pr
+!       V=0.11655858674454586088325610656019
+!    end subroutine volume_calculation
 
    ! subroutine Helmholtz_CPSAFT(n_deriv, t_deriv, n, V, T, Ar, ArV, ArTV, ArV2, Arn, ArVn, ArTn, Arn2)
    !    implicit none
